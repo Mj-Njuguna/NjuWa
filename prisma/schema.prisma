@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+model Client {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  idNumber      String         @unique
+  phoneNumber1  String
+  phoneNumber2  String?
+  businessLocation String
+  permitNumber  String?
+  homeAddress   String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  loanRecords   LoanRecord[]
+  references    Reference[]
+  guarantors    Guarantor[]
+  mediaFiles    MediaFile[]
+}
+
+model LoanRecord {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  clientId         String      @db.ObjectId
+  client           Client      @relation(fields: [clientId], references: [id])
+  loanAmount       Float
+  interestRate     Float
+  registrationFee  Float
+  loanDuration     Int         // duration in days
+  applicationDate  DateTime
+  disbursementDate DateTime?
+  firstInstallmentDate DateTime?
+  lastInstallmentDate  DateTime?
+  dailyPaymentCheck    Boolean    @default(false)
+  loanOfficer      String
+  status           LoanStatus  @default(PENDING)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  guarantors       Guarantor[]
+  references       Reference[]
+  mediaFiles       MediaFile[]
+}
+
+model Guarantor {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  idNumber     String
+  phoneNumber  String
+  clientId     String      @db.ObjectId
+  client       Client      @relation(fields: [clientId], references: [id])
+  loanRecordId String?     @db.ObjectId
+  loanRecord   LoanRecord? @relation(fields: [loanRecordId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Reference {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  phoneNumber  String
+  relationship String
+  clientId     String      @db.ObjectId
+  client       Client      @relation(fields: [clientId], references: [id])
+  loanRecordId String?     @db.ObjectId
+  loanRecord   LoanRecord? @relation(fields: [loanRecordId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model MediaFile {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  fileName     String
+  fileType     FileType
+  fileUrl      String
+  description  String?
+  clientId     String      @db.ObjectId
+  client       Client      @relation(fields: [clientId], references: [id])
+  loanRecordId String?     @db.ObjectId
+  loanRecord   LoanRecord? @relation(fields: [loanRecordId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  DISBURSED
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+  REJECTED
+}
+
+enum FileType {
+  BUSINESS_PHOTO
+  ID_PHOTO
+  HOME_PHOTO
+  OTHER_PHOTO
+  CONTRACT_PDF
+  OTHER_DOCUMENT
+}
