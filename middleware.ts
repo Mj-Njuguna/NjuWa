@@ -6,7 +6,6 @@ export default authMiddleware({
   // Routes that can be accessed without authentication
   publicRoutes: [
     "/",
-    "/dashboard", // Temporarily add dashboard to public routes for development
     "/auth/sign-in",
     "/auth/sign-up",
     "/auth/forgot-password",

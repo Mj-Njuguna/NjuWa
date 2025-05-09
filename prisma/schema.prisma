@@ -91,12 +91,9 @@ model MediaFile {
 
 enum LoanStatus {
   PENDING
-  APPROVED
-  DISBURSED
   ACTIVE
   COMPLETED
   DEFAULTED
-  REJECTED
 }
 
 enum FileType {

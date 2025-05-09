@@ -25,13 +25,10 @@ export default async function DashboardPage() {
     // Continue without auth for development purposes
   }
   
-  // For development purposes, allow access even without authentication
-  // In production, you would uncomment this redirect
-  /*
+  // Enforce authentication for dashboard access
   if (!userId || !user) {
     redirect("/auth/sign-in");
   }
-  */
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

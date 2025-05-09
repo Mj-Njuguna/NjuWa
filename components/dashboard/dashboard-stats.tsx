@@ -18,10 +18,18 @@ interface DashboardStatsData {
   totalActiveInterest: number;
   totalExpectedReturn: number;
   totalActiveExpectedReturn: number;
-  statusDistribution: Array<{
+  statusDistribution?: Array<{
     status: string;
     count: number;
   }>;
+  loanStatusDistribution?: {
+    PENDING?: number;
+    APPROVED?: number;
+    ACTIVE?: number;
+    COMPLETED?: number;
+    DEFAULTED?: number;
+    [key: string]: number | undefined;
+  };
   upcomingPayments: Array<{
     id: string;
     clientName: string;
@@ -42,7 +50,15 @@ export default function DashboardStats() {
       try {
         setLoading(true);
         console.log('Fetching dashboard stats...');
-        const response = await fetch('/api/dashboard/stats');
+        const response = await fetch('/api/dashboard/stats', {
+          // Add cache busting parameter to prevent caching
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          // Add timestamp to force a fresh request
+          cache: 'no-store'
+        });
         
         if (!response.ok) {
           throw new Error('Failed to fetch dashboard statistics');
@@ -50,7 +66,29 @@ export default function DashboardStats() {
         
         const data = await response.json();
         console.log('Dashboard stats data received:', data);
-        setStatsData(data);
+        console.log('Total disbursed amount:', data.totalDisbursed);
+        console.log('Total interest earned:', data.totalInterestEarned);
+        console.log('Active interest:', data.totalActiveInterest);
+        
+        // Force a clean data object with numeric values
+        const cleanData = {
+          ...data,
+          totalLoans: Number(data.totalLoans) || 0,
+          activeLoans: Number(data.activeLoans) || 0,
+          loansEndingSoon: Number(data.loansEndingSoon) || 0,
+          totalDisbursed: Number(data.totalDisbursed) || 0,
+          totalInterestEarned: Number(data.totalInterestEarned) || 0,
+          totalActiveInterest: Number(data.totalActiveInterest) || 0,
+          totalExpectedReturn: Number(data.totalExpectedReturn) || 0,
+          totalActiveExpectedReturn: Number(data.totalActiveExpectedReturn) || 0,
+          // Ensure loan status distribution is properly formatted
+          loanStatusDistribution: data.loanStatusDistribution || {},
+        };
+        
+        console.log('Cleaned data:', cleanData);
+        console.log('Loan status distribution:', cleanData.loanStatusDistribution);
+        console.log('Completed loans:', cleanData.loanStatusDistribution?.COMPLETED || 0);
+        setStatsData(cleanData);
       } catch (err) {
         console.error('Error fetching dashboard stats:', err);
         setError('Failed to load dashboard statistics');
@@ -124,45 +162,33 @@ export default function DashboardStats() {
 
   console.log('Rendering dashboard stats with data:', statsData);
 
-  // Format the total disbursed amount in Kenyan Shillings
-  const formattedTotalDisbursed = new Intl.NumberFormat('en-KE', {
-    style: 'currency',
-    currency: 'KES',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(statsData.totalDisbursed);
+  // Helper function to format currency values with fallback to 0
+  const formatCurrency = (value: number | undefined | null) => {
+    // Ensure the value is a number and default to 0 if undefined, null, or NaN
+    const numValue = typeof value === 'number' && !isNaN(value) ? value : 0;
+    
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(numValue);
+  };
 
-  // Format the total interest earned in Kenyan Shillings
-  const formattedTotalInterest = new Intl.NumberFormat('en-KE', {
-    style: 'currency',
-    currency: 'KES',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(statsData.totalInterestEarned);
-
-  // Format the active interest in Kenyan Shillings
-  const formattedActiveInterest = new Intl.NumberFormat('en-KE', {
-    style: 'currency',
-    currency: 'KES',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(statsData.totalActiveInterest);
-
-  // Format the total expected return in Kenyan Shillings
-  const formattedExpectedReturn = new Intl.NumberFormat('en-KE', {
-    style: 'currency',
-    currency: 'KES',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(statsData.totalExpectedReturn || 0);
-
-  // Format the active expected return in Kenyan Shillings
-  const formattedActiveExpectedReturn = new Intl.NumberFormat('en-KE', {
-    style: 'currency',
-    currency: 'KES',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(statsData.totalActiveExpectedReturn || 0);
+  // Ensure all values are proper numbers before formatting
+  console.log('Before formatting - totalDisbursed:', statsData.totalDisbursed, typeof statsData.totalDisbursed);
+  console.log('Before formatting - totalInterestEarned:', statsData.totalInterestEarned, typeof statsData.totalInterestEarned);
+  
+  // Format all monetary values with the helper function
+  const formattedTotalDisbursed = formatCurrency(Number(statsData.totalDisbursed));
+  const formattedTotalInterest = formatCurrency(Number(statsData.totalInterestEarned));
+  const formattedActiveInterest = formatCurrency(Number(statsData.totalActiveInterest));
+  const formattedExpectedReturn = formatCurrency(Number(statsData.totalExpectedReturn));
+  const formattedActiveExpectedReturn = formatCurrency(Number(statsData.totalActiveExpectedReturn));
+  
+  console.log('After formatting:');
+  console.log('formattedTotalDisbursed:', formattedTotalDisbursed);
+  console.log('formattedTotalInterest:', formattedTotalInterest);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -172,6 +198,11 @@ export default function DashboardStats() {
     return formatDistanceToNow(date, { addSuffix: true });
   };
 
+  // Calculate percentage of completed loans
+  const completedPercentage = statsData.totalLoans > 0 
+    ? Math.round((statsData.loanStatusDistribution?.COMPLETED || 0) / statsData.totalLoans * 100) 
+    : 0;
+
   // Main stats
   const stats = [
     {
@@ -179,7 +210,9 @@ export default function DashboardStats() {
       value: statsData.totalLoans.toString(),
       description: "Total loans processed",
       icon: <Coins className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
-      change: statsData.totalLoans > 0 ? `${((statsData.activeLoans / statsData.totalLoans) * 100).toFixed(0)}% active` : "No loans",
+      change: statsData.totalLoans > 0 
+        ? `${completedPercentage}% completed, ${((statsData.activeLoans / statsData.totalLoans) * 100).toFixed(0)}% active` 
+        : "No loans",
       changeType: "neutral",
     },
     {
@@ -187,7 +220,11 @@ export default function DashboardStats() {
       value: statsData.activeLoans.toString(),
       description: "Currently active loans",
       icon: <Users className="h-5 w-5 text-green-600 dark:text-green-400" />,
-      change: statsData.loansEndingSoon > 0 ? `${statsData.loansEndingSoon} ending soon` : "None ending soon",
+      change: statsData.loansEndingSoon > 0 
+        ? `${statsData.loansEndingSoon} ending soon` 
+        : statsData.activeLoans === 0 && statsData.totalLoans > 0 
+          ? "All loans completed" 
+          : "None ending soon",
       changeType: "neutral",
     },
     {
@@ -197,7 +234,9 @@ export default function DashboardStats() {
       icon: (
         <DollarSign className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
       ),
-      change: `${((statsData.totalInterestEarned / statsData.totalDisbursed) * 100).toFixed(1)}% interest rate`,
+      change: statsData.totalDisbursed > 0 
+        ? `${((statsData.totalInterestEarned / statsData.totalDisbursed) * 100).toFixed(1)}% interest rate` 
+        : "0% interest rate",
       changeType: "positive",
     },
     {
@@ -207,7 +246,11 @@ export default function DashboardStats() {
       icon: (
         <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
       ),
-      change: `${formattedActiveExpectedReturn} from active loans`,
+      change: statsData.activeLoans > 0 
+        ? `${formattedActiveExpectedReturn} from active loans` 
+        : statsData.totalLoans > 0 
+          ? "All loans completed" 
+          : "No active loans",
       changeType: "positive",
     },
     {
@@ -217,7 +260,11 @@ export default function DashboardStats() {
       icon: (
         <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
       ),
-      change: `${formattedActiveInterest} from active loans`,
+      change: statsData.activeLoans > 0 
+        ? `${formattedActiveInterest} from active loans` 
+        : statsData.totalLoans > 0 
+          ? "All from completed loans" 
+          : "No interest earned",
       changeType: "positive",
     },
   ];

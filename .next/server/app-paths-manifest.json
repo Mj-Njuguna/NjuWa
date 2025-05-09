@@ -1,0 +1,10 @@
+{
+  "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/records/page": "app/records/page.js",
+  "/auth/sign-in/page": "app/auth/sign-in/page.js",
+  "/api/loans/route": "app/api/loans/route.js",
+  "/records/new/page": "app/records/new/page.js",
+  "/records/[id]/page": "app/records/[id]/page.js",
+  "/api/loans/[id]/route": "app/api/loans/[id]/route.js"
+}
